@@ -1,0 +1,114 @@
+{% load static %}
+<html ng-app="OCR" style="">
+<head>
+    <meta charset="UTF-8">
+    <META Http-Equiv="Cache-Control" Content="no-cache">
+    <META Http-Equiv="Pragma" Content="no-cache">
+    <META Http-Equiv="Expires" Content="0">
+    <title>Stride OCR Login</title>
+    <link rel="stylesheet" href="{% static 'css/spacelab-bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/font-awesome.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="shortcut icon" href="{% static 'img/stride-logo-original' %}" type="image/x-icon">
+</head>
+
+<body ng-controller="demo_ocr">
+    <nav style='padding: 5px' class="navbar navbar-default" role="navigation">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a style='cursor: pointer' class="navbar-brand" href="http://stride.ai"><img src="{% static 'img/logov2.svg' %}" id="logo" alt="logo" width="100"></a>
+            </div>
+            <ul class="nav navbar-nav navbar-right">
+            </ul>
+        </div>
+    </nav>
+    <div class="container hidden" id="loading" align="center">
+        <div class="col-md-2 col-md-offset-5 col-xs-4 col-xs-offset-4" id="loadingMessage">
+            <img src="{% static 'img/loading.gif' %}" alt="Loading Stride Logo" class="img loadinggif" width="100">
+            <h3 class="loadingtext">Loading...</h3>
+        </div>
+        <div class="col-md-6 col-md-offset-3 col-xs-4 col-xs-offset-4 hidden" id="connectionClosed">
+            <h2 class="text-danger text-center"><span><i class="fa fa-exclamation-triangle fa-2x" aria-hidden="true"></i></span></h2>
+            <br>
+            <h4 class="text-center">Invalid Credentials! Please check the credentials entered.</h4>
+        </div>
+    </div>
+    <div class="container" id="retrieval_form">
+        <div class="col-md-4 col-md-offset-4 col-xs-6 col-xs-offset-3">
+            <legend class="text-center">
+                Stride OCR Engine
+            </legend>
+            <div class="alert alert-danger" id="fillall">
+                <button type="button" class="close" onclick="$('#fillall').slideUp();" aria-hidden="true">&times;</button>
+                <strong class="text-center" id="alert_msg">Invalid Credentials!<br>Please check the credentials entered.</strong>
+            </div>
+            <br>
+            <form class="form-horizontal">
+                <div class="form-group">
+                    <label class="control-label" for="company">
+                        <h4> Enter Username</h4>
+                    </label>
+                    <input type="text" id="username" placeholder="Enter Usernane" autocomplete="off" ng-model="username" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="control-label" for="company">
+                        <h4> Enter Password</h4>
+                    </label>
+                    <input type="password" id="password" placeholder="Enter Password" autocomplete="off" ng-model="password" class="form-control" required>
+                </div>
+                <br>
+                <div class="col-xs-12 ">
+                    <button class="btn btn-success center-block mgbt30 btn_stride_color" type="submit" ng-click="formSubmission()" id="submit_button">Submit</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+
+<script src="{% static 'js/jquery-3.1.1.min.js' %}"></script>
+<script src="{% static 'js/bootstrap.min.js' %}"></script>
+<script src="{% static 'js/angular.min.js' %}"></script>
+<script type="text/javascript">
+
+    history.pushState(null, null, document.URL);
+    window.addEventListener('popstate', function () {
+        history.pushState(null, null, document.URL);
+    });
+
+    var app = angular.module('OCR', []);
+    app.controller('demo_ocr', ['$scope', '$http', function($scope, $http) {
+
+        angular.element(document).ready(function () {
+            $('#fillall').hide();
+            $('html').css('display', 'block');
+        });
+
+        $scope.formSubmission = function () {
+            $.post({
+                url:'/login/', 
+                data: {username: $scope.username, password: $scope.password, csrfmiddlewaretoken:"{{ csrf_token }}"}, 
+                success: function(data) {
+                    if(data == 'Authentication Successful'){
+                        location.href = '/';
+                    }
+                    else{
+                        $('#fillall').slideDown();
+                    }
+                },
+                error: function (e) {
+                    console.error(e.responseText);
+                    $('#fillall').slideDown();
+                    
+                }
+            });
+        };
+
+    }]);
+</script>
+</html>

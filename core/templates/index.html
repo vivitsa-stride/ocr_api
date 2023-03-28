@@ -1,0 +1,286 @@
+{% load static %}
+<html ng-app="OCR">
+<head>
+    <meta charset="UTF-8">
+    <META Http-Equiv="Cache-Control" Content="no-cache">
+    <META Http-Equiv="Pragma" Content="no-cache">
+    <META Http-Equiv="Expires" Content="0">
+    <title>Stride OCR Engine</title>
+    <link rel="stylesheet" href="{% static 'css/spacelab-bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/font-awesome.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="shortcut icon" href="{% static 'img/logo.png' %}" type="image/x-icon">
+</head>
+
+<body ng-controller="demo_ocr">
+    <nav class="navbar navbar-default" role="navigation">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="http://stride.ai"><img src="static/img/logov2.svg" id="logo" alt="logo" width="100"></a>
+            </div>
+            <ul class="nav navbar-nav navbar-right">
+                <li><a href="/">Reset</a></li>
+                <li><a href="/logout">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container hidden" id="loading" align="center">
+        <div class="col-md-2 col-md-offset-5 col-xs-4 col-xs-offset-4" id="loadingMessage">
+            <img src="static/img/loading.gif" alt="Loading Stride Logo" class="img loadinggif" width="100">
+            <h3 class="loadingtext">Loading...</h3>
+        </div>
+        <div class="col-md-6 col-md-offset-3 col-xs-4 col-xs-offset-4 hidden" id="connectionClosed">
+            <h2 class="text-danger text-center"><span><i class="fa fa-exclamation-triangle fa-2x" aria-hidden="true"></i></span></h2>
+            <br>
+            <h4 class="text-center">Something went wrong! Please try again later.</h4>
+        </div>
+    </div>
+    <div class="container" id="upload_form">
+        <div class="col-md-6 col-md-offset-3 col-xs-6 col-xs-offset-3">
+            <legend class="text-center">
+                Stride OCR Engine
+            </legend>
+            <div class="alert alert-danger" id="fillall" style="display: none;">
+                <button type="button" class="close" onclick="$('#fillall').slideUp();" aria-hidden="true">&times;</button>
+                <strong class="text-center" id="alert_msg">Invalid Credentials!<br>Please check the credentials entered.</strong>
+            </div>
+            <br>
+            <div class="form-group vertical-center">
+                    <div class="form-group">
+                            <label for="selectInput">Select type of document</label>
+                            <select id="docType" class="form-control"
+                                ng-model="documentType"
+                                ng-change="displayUploader(documentType)">
+                                <option value="PDF"> PDF </option>
+                                <option value="IMAGE"> IMAGE </option>                                
+                            </select>
+                          </div>
+                <div class="input-group" ng-if="!showUploader">
+                    <label class="input-group-btn">
+                        <span class="btn btn-primary btn_stride_color">
+                            Choose PDF <input type="file"  ng-model="fileObject" onchange="angular.element(this).scope().changeName(this)" id="pdf-file" name="csa_pdf" style="display: none;" accept="application/pdf">
+                        </span>
+                    </label>
+                    <input type="text" class="form-control" ng-model="fileName" id="pdf-name" placeholder="Select the PDF File" readonly required>
+                </div>
+                <div class="input-group" style="margin-top: 10px" ng-if="showUploader">
+                    <label class="input-group-btn ">
+                        <span class="btn btn-primary btn_stride_color" >
+                            Choose IMAGE <input type="file" ng-model="imageObject" onchange="angular.element(this).scope().changeName(this)" id="image-file" name="csa_image" style="display: none;" accept="image/*">
+                        </span>
+                    </label>
+                    <input type="text" class="form-control" ng-model="imageName" id="image-name" placeholder="Select the IMAGE file. Supported types(jpg, tiff, png)" readonly required>
+                </div>
+            </div>
+            
+            
+            <div ng-if="showError">
+                <small style="color:red;" >Please check the type of the document you are trying to upload.</small>
+            </div>
+            <br>
+            <label><b>PreProcessing</b></label>
+            <div class="custom-control custom-switch">
+                <label class="switch">
+                    <input type="checkbox" ng-model="preProcessing">
+                    <span class="slider round"></span>
+                </label>
+            </div>
+            <div ng-if="preProcessing">
+                <select class="form-control">
+                    <option value=1>preprocess</option>
+                    <option value=1>deskew</option>
+                    <option value=1>rotate</option>
+                    <option value=1>luin_fix</option>
+                    <option value=1>denoise</option>
+                    <option value=1>enable_filers</option>
+                    <option value=1>enable_superres</option> 
+                    <option value=1>pdf_splice</option> 
+                    <option value="all">lang</option>                     
+                </select>
+            </div>
+            <br>
+            <div align="center">
+                <button type="button" class="btn btn-success btn_stride_color" ng-click="fileSubmit()" ng-disabled="disableSubmit">Submit</button>
+            </div>
+            <br>
+            <br>
+        </div>
+    </div>
+    <div class="container hidden" id="results">
+        <div class="vertical-center" align="center">
+            <a href="" class="btn btn-primary btn-lg" id="download_pdf" download>Download {{type}}</a>
+        </div>
+    </div>
+</body>
+
+<script src="{% static 'js/jquery-3.1.1.min.js' %}"></script>
+<script src="{% static 'js/bootstrap.min.js' %}"></script>
+<script src="{% static 'js/angular.min.js' %}"></script>
+<script src="{% static 'js/sweetalert2.all.js' %}"></script>
+<script>
+
+    var webSocket;
+    var app = angular.module('OCR', []);
+    app.controller('demo_ocr', ['$scope', '$http', function($scope, $http) {
+
+        // $('#pdf-file').change(function() {
+        //     $('#pdf-name').val($('#pdf-file')[0].files[0].name);
+        // });
+        // $('#image-file').change(function() {
+        //     $('#image-name').val($('#image-file')[0].files[0].name);
+        // });
+        $scope.showUploader = false;
+        $scope.type = '';
+        $scope.documentType = 'PDF';
+        $scope.fileName = '';
+        $scope.imageName = '';
+        $scope.preProcessing = false;
+        $scope.file = {};
+        $scope.showError = false;
+        $scope.acceptedformat = '';
+        $scope.disableSubmit = true;
+        $scope.ocr_parms = {
+            "preprocess": 0,
+            "deskew": 0,
+            "rotate": 0,
+            "luin_fix":0,
+            "denoise": 0,
+            "enable_filers": 0,
+            "enable_superres": 0,
+            "pdf_splice": 0,
+            "lang": "all",
+        }
+
+        $scope.changeName = function(fileObj) {
+            $scope.showError = false;
+            $scope.disableSubmit = true;
+            if(fileObj) {
+                $scope.acceptedformat = fileObj.accept;
+                if(fileObj.files[0]) {
+                    $scope.file = fileObj.files[0];
+                    fileType = $scope.file.type;
+                    if(fileType.includes('image')) {
+                        fileType = 'image/*';
+                    }
+                    if($scope.acceptedformat === fileType) {
+                        if(fileType === 'application/pdf') {
+                            $scope.fileName = $scope.file.name;
+                            $scope.type = 'PDF';
+                        }else if (fileType.includes('image')) {
+                            $scope.imageName = $scope.file.name;
+                            $scope.type = 'IMAGE';
+                        }
+                        $scope.disableSubmit = false;
+                    } else {
+                        $scope.showError = true;
+                        $scope.disableSubmit = true;
+                        $scope.fileName = '';
+                        $scope.imageName = '';
+                    }
+                    $scope.$digest();
+                }
+            }
+        }
+        
+        
+        $scope.displayUploader =  function(type) {
+            $scope.showError = false;
+            if(type === 'IMAGE') {
+                $scope.showUploader = true;
+                $scope.type = 'IMAGE';
+                $scope.fileName = '';
+            } else if( type === 'PDF'){
+                $scope.showUploader = false;
+                $scope.type = 'PDF';
+                $scope.imageName = '';
+            }
+            // $scope.$digest()
+        }
+
+        $scope.fileSubmit = function () {
+            if( $scope.showError === true || ($scope.fileName === '' && $scope.imageName === '')) {
+                return;
+            } else {
+                $scope.disableSubmit = false;
+            }
+            $('#loading, #upload_form').toggleClass('hidden');
+            var formData = new FormData();
+            if ($scope.type === 'IMAGE') {
+                formData.append('file', $scope.file, $scope.file.name);
+            } else if ($scope.type === 'PDF') {
+                formData.append('file', $scope.file, $scope.file.name);
+            }
+            formData.append('preprocessing', $scope.preProcessing);
+            formData.append('csrfmiddlewaretoken',"{{ csrf_token }}");
+
+            $.post({
+                url:'/ocr/',
+                data: formData,
+                cache: false,
+                contentType: false,
+                mimeType: 'multipart/form-data',
+                processData: false,
+                success: function(data) {
+                    var docID = JSON.parse(data)['doc_id'];
+                    function pollGetAPI() {
+                        $.get({url: '/ocr/?doc_id=' + docID, success: function(response){
+                            console.log(response);
+                            //var response = JSON.parse(response);
+                            if (response['status'] == 'completed') {
+                                $('#download_pdf').attr('href', response['result']['output_url']);
+                                $('#loading, #results').toggleClass('hidden');
+                            } else if (response['status'] == "processing" || response['status'] == "queued") {
+                                setTimeout(pollGetAPI, 5000);
+                            } else {
+                                swal('Error', 'Something went wrong please try again', 'error')
+                            }
+
+                        }});
+                    }
+                    setTimeout(pollGetAPI, 5000);
+                },
+                error: function (e) {
+                    if (e.status == 400){
+                        $('#loading, #upload_form').toggleClass('hidden');
+                        swal('Error', 'Please upload only PDF or IMAGE files', 'error');
+                    }else{
+                        swal('Error', 'Something went wrong please try again', 'error');
+                    }
+                }
+            });
+        };
+
+    }]);
+
+    app.filter('unsafe', function($sce) {
+        return function(val) {
+            return $sce.trustAsHtml(val);
+        };
+    });
+
+    app.config(function($interpolateProvider) {
+        $interpolateProvider.startSymbol('[[');
+        $interpolateProvider.endSymbol(']]');
+    });
+
+    // $.post({
+    //     url:'/check_login/',
+    //     data: {csrfmiddlewaretoken:"{{ csrf_token }}"},
+    //     success: function(data) {
+    //         console.log(data)
+    //     },
+    //     error: function (e) {
+    //         console.error(e);
+
+    //     }
+    // });
+
+
+</script>
+</html>
